@@ -10,6 +10,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 import numpy as np
+from os.path import dirname, abspath, join
 
 tf.logging.set_verbosity(tf.logging.INFO)
 
@@ -66,7 +67,7 @@ def main(unused_argv):
     eval_data = mnist.test.images
     eval_labels = np.asarray(mnist.test.labels, dtype=np.int32)
     mnist_classifier = tf.estimator.Estimator(
-            model_fn=cnn_model_fn, model_dir="C:/Users/Thomas/Documents/Networks/mnist_convnet_model")
+            model_fn=cnn_model_fn, model_dir=join(dirname(abspath(__file__)),"mnist_convnet_model"))
     tensors_to_log = {"probabilities": "softmax_tensor"}
     logging_hook = tf.train.LoggingTensorHook(
             tensors=tensors_to_log, every_n_iter=50)
