@@ -22,6 +22,7 @@ def cnn_model_fn(features, labels, mode):
             kernel_size=[5,5],
             padding="same",
             activation=tf.nn.relu)
+    
     pool1 = tf.layers.max_pooling2d(inputs=conv1, pool_size=[2,2],strides=2)
     conv2 = tf.layers.conv2d(
             inputs=pool1,
@@ -40,7 +41,17 @@ def cnn_model_fn(features, labels, mode):
     
     predictions = {
             "classes": tf.arg_max(input=logits, dimension=1),
-            "probabilities": tf.nn.softmax(logits, name="softmax_tensor")}
+            "probabilities": tf.nn.softmax(logits, name="softmax_tensor"),
+            "logits": logits,
+            "conv1": conv1,
+            "conv2": conv2}
+    # "smuggle" out logits
+#    loss_vs_target = tf.nn.sparse_softmax_cross_entropy_with_logits(
+#        logits=logits, 
+#        labels=features['fake_targets']
+#    )
+#    predictions['image_gradient_vs_fake_target'] = tf.gradients(loss_vs_target, [input_layer])
+
     
     if mode == tf.estimator.ModeKeys.PREDICT:
         return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
@@ -59,6 +70,11 @@ def cnn_model_fn(features, labels, mode):
                     labels=labels, predictions=predictions["classes"])}
     return tf.estimator.EstimatorSpec(
             mode=mode, loss=loss, eval_metric_ops=eval_metric_ops)
+
+def mnist_direct_data_input_fn(features_np_dict, targets_np):
+    features_dict = { k:tf.constant(v) for k,v in features_np_dict.items()}
+    targets = None if targets_np is None else tf.constant(targets_np)
+    return features_dict, targets
 
 def main(unused_argv):
     mnist = tf.contrib.learn.datasets.load_dataset("mnist")
@@ -81,13 +97,33 @@ def main(unused_argv):
             input_fn=train_input_fn,
             steps=1,
             hooks=[logging_hook])
-    eval_input_fn = tf.estimator.inputs.numpy_input_fn(
+
+
+    tensor_prediction_generator = mnist_classifier.predict( 
+        input_fn=tf.estimator.inputs.numpy_input_fn(
             x={"x": eval_data},
             y=eval_labels,
             num_epochs=1,
-            shuffle=False)
-    eval_results = mnist_classifier.evaluate(input_fn=eval_input_fn)
-    print(eval_results)
+            shuffle=False),
+        predict_keys=['logits', 'conv1', 'conv2']
+    )
+    
+    for tensor_predictions in tensor_prediction_generator:
+        break # Get the first one...
+    
+    print("########### LOGITS ###########")
+    print(tensor_predictions['logits'])
+    print("########### CONV1 ###########")
+    print(tensor_predictions['conv1'])
+    print("########### CONV2 ###########")
+    print(tensor_predictions['conv2'])
+#    eval_input_fn = tf.estimator.inputs.numpy_input_fn(
+#            x={"x": eval_data},
+#            y=eval_labels,
+#            num_epochs=1,
+#            shuffle=False)
+#    eval_results = mnist_classifier.evaluate(input_fn=eval_input_fn)
+#    print(eval_results)
     
 if __name__ == "__main__":
     tf.app.run()
