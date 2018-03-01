@@ -31,15 +31,16 @@ def generate_data(noise=False):
 		X_test = np.reshape(X_test,[10000,1,28,28])
 	return X_train, X_test, Y_train, Y_test
 
-def generate_model(noise=False):
-	try:
-		if noise:
-			model = load_model('keras_mnist_model_noisev1.h5')
-		else:
-			model = load_model('keras_mnist_modelv1.h5')
-		return model
-	except:
-		pass
+def generate_model(noise=False, force_retrain=False):
+	if not force_retrain:
+		try:
+			if noise:
+				model = load_model('keras_mnist_model_noisev1.h5')
+			else:
+				model = load_model('keras_mnist_modelv1.h5')
+			return model
+		except:
+			pass
 
 	np.random.seed(123)  # for reproducibility
 	 
