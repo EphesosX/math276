@@ -8,7 +8,7 @@ from keras.datasets import mnist
 from keras import backend as K
 from matplotlib import pyplot as plt
 
-def generate_data(noise=False):
+def generate_data(noise=False, nums=None):
 	K.set_image_dim_ordering('th')
 	# 4. Load pre-shuffled MNIST data into train and test sets
 	(X_train, y_train), (X_test, y_test) = mnist.load_data()
@@ -24,6 +24,28 @@ def generate_data(noise=False):
 	# 6. Preprocess class labels
 	Y_train = np_utils.to_categorical(y_train, 10)
 	Y_test = np_utils.to_categorical(y_test, 10)
+	if nums:
+		# Filter out only training and test examples corresponding to the given digits
+		X_train_nums = []
+		X_test_nums = []
+		Y_train_nums = []
+		Y_test_nums = []
+		
+		for num in nums:
+			X_train_num = X_train[Y_train[:,num]==1,:,:,:]
+			X_test_num = X_test[Y_test[:,num]==1,:,:]
+			Y_train_num = Y_train[Y_train[:,num]==1]
+			Y_test_num = Y_test[Y_test[:,num]==1]
+
+			X_train_nums.append(X_train_num)
+			X_test_nums.append(X_test_num)
+			Y_train_nums.append(Y_train_num)
+			Y_test_nums.append(Y_test_num)
+
+		X_train = np.concatenate(X_train_nums)
+		X_test = np.concatenate(X_test_nums)
+		Y_train = np.concatenate(Y_train_nums)
+		Y_test = np.concatenate(Y_test_nums)
 	if noise:
 		X_train = np.array([salt_pepper(X_train[i,0,:,:]) for i in range(X_train.shape[0])])
 		X_train = np.reshape(X_train,[60000,1,28,28])
@@ -31,10 +53,12 @@ def generate_data(noise=False):
 		X_test = np.reshape(X_test,[10000,1,28,28])
 	return X_train, X_test, Y_train, Y_test
 
-def generate_model(noise=False, force_retrain=False):
+def generate_model(noise=False, force_retrain=False, nums=None, name=None):
 	if not force_retrain:
 		try:
-			if noise:
+			if name:
+				model = load_model(name)
+			elif noise:
 				model = load_model('keras_mnist_model_noisev1.h5')
 			else:
 				model = load_model('keras_mnist_modelv1.h5')
@@ -44,7 +68,7 @@ def generate_model(noise=False, force_retrain=False):
 
 	np.random.seed(123)  # for reproducibility
 	 
-	X_train, X_test, Y_train, Y_test = generate_data(noise)
+	X_train, X_test, Y_train, Y_test = generate_data(noise, nums)
 	 
 	# 7. Define model architecture
 	model = Sequential()
@@ -70,7 +94,9 @@ def generate_model(noise=False, force_retrain=False):
 	 
 	# 10. Evaluate model on test data
 	score = model.evaluate(X_test, Y_test, verbose=0)
-	if noise:
+	if name:
+		model.save(name)
+	elif noise:
 		model.save('keras_mnist_model_noisev1.h5')
 	else:
 		model.save('keras_mnist_modelv1.h5')
